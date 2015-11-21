@@ -1,3 +1,0 @@
-version=2
-
-docke run -e GRAPHITE_HOST=mon.elephantum.io -e GRAPHITE_PORT=2003 -e PORT=8080 -p 8080:8080 e1b89be5a67f

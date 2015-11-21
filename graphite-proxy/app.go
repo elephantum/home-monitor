@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"errors"
 	"log"
-	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -20,6 +20,10 @@ func connectGraphite() (*graphite.Graphite, error) {
 	graphiteHost := os.Getenv("GRAPHITE_HOST")
 	graphitePort, err := strconv.Atoi(os.Getenv("GRAPHITE_PORT"))
 
+	if graphiteHost == "" {
+		return nil, errors.New("GRAPHITE_HOST is not set")
+	}
+
 	if err != nil {
 		graphitePort = 2003
 	}
@@ -27,29 +31,23 @@ func connectGraphite() (*graphite.Graphite, error) {
 	return graphite.NewGraphite(graphiteHost, graphitePort)
 }
 
-func handleRequest(conn net.Conn, graphiteServer *graphite.Graphite) {
+func handleRequest(graphiteServer *graphite.Graphite, w http.ResponseWriter, req *http.Request) {
 	log.Println("Handling request")
-	buf := make([]byte, 1024)
-	nBytes, err := conn.Read(buf)
+
+	parsedURL, err := url.ParseRequestURI(req.RequestURI)
 
 	if err != nil {
-		fmt.Println("Error reading:", err.Error())
+		log.Println("Failed to parse request:", req.RequestURI)
+		return
 	}
 
-	var data map[string]float64
+	params := parsedURL.Query()
 
-	err = json.Unmarshal(buf[:nBytes], &data)
-
-	if err != nil {
-		fmt.Println("Failed to read JSON:", err.Error())
-	}
-
-	log.Println("received", nBytes, "bytes, data:", data)
-	conn.Close()
+	log.Println("Received request:", params)
 
 	var metrics []graphite.Metric
-	for m, v := range data {
-		metrics = append(metrics, graphite.NewMetric(m, strconv.FormatFloat(v, 'f', -1, 64), time.Now().Unix()))
+	for m := range params {
+		metrics = append(metrics, graphite.NewMetric(m, params.Get(m), time.Now().Unix()))
 	}
 
 	log.Println(metrics)
@@ -61,7 +59,7 @@ func main() {
 	graphiteServer, err := connectGraphite()
 
 	if err != nil {
-		log.Println("cannot connect to graphite")
+		log.Println("cannot connect to graphite:", err.Error())
 		os.Exit(1)
 	}
 
@@ -72,21 +70,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	l, err := net.Listen("tcp", ":"+listenPort)
-	defer l.Close()
-
-	if err != nil {
-		log.Println("failed to listen :8080")
-		os.Exit(1)
+	graphiteHandler := func(w http.ResponseWriter, req *http.Request) {
+		handleRequest(graphiteServer, w, req)
 	}
 
-	for {
-		conn, err := l.Accept()
+	http.HandleFunc("/", graphiteHandler)
 
-		if err != nil {
-			log.Println("Failed to accept request: ", err.Error())
-		} else {
-			go handleRequest(conn, graphiteServer)
-		}
+	err = http.ListenAndServe(":"+listenPort, nil)
+
+	if err != nil {
+		log.Println("Failed to start HTTP:", err.Error())
+		os.Exit(1)
 	}
 }

@@ -25,7 +25,7 @@ IPAddress MONITOR_SERVER(52,30,205,62);
 #define MONITOR_PORT 8003
 
 EthernetServer server(80);
-EthernetClient client;
+EthernetUDP udp;
 
 // read data every second
 #define SENSOR_READ_INTERVAL 1000
@@ -40,7 +40,8 @@ unsigned long data_last_sent;
 void setup() {
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
-//  server.begin();
+  udp.begin(8888);
+  server.begin();
 
   Serial.begin(9600); // Open serial connection to report values to host
   Serial.println("Starting up");
@@ -61,14 +62,6 @@ void read_data() {
     humidity = sht1x.readHumidity();
 
     sensor_last_read = current_time;
-
-    // Print the values to the serial port
-    Serial.print("Temperature: ");
-    Serial.print(temp_c, DEC);
-    Serial.print("C ");
-    Serial.print(" Humidity: ");
-    Serial.print(humidity);
-    Serial.println("%");
   }
 }
 
@@ -122,38 +115,29 @@ void serve_http() {
   }
 }
 
+void send_metric(char *name, float val) {
+  char msg[255];
+  char val_str[100];
+  
+  dtostrf(val, 0, 4, val_str);
+  sprintf(msg, "%s:%s|g", name, val_str);
+  
+  Serial.println(msg);
+  udp.beginPacket(MONITOR_SERVER, 8125);
+  udp.write(msg);
+  udp.endPacket();
+}
+
 void send_data() {
   unsigned long current_time = millis();
   
   if(data_last_sent + DATA_SEND_INTERVAL < current_time) {
-    if (client.connect(MONITOR_SERVER, MONITOR_PORT)) {
-      Serial.println("connected");
-    }
+    Serial.println("Sending data to statsd");
+    
+    send_metric("sensor.temperature", temp_c);
+    send_metric("sensor.humidity", humidity);
+    send_metric("sensor.uptime", millis()/1000);
 
-    if(client.connected()) {
-      Serial.println("Sending data");
-      
-      client.print("GET /?");
-      client.print("sensor.temperature=");
-      client.print(temp_c);
-      client.print("&sensor.humidity=");
-      client.print(humidity);
-      client.print("&sensor.uptime=");
-      client.print(millis()/1000);
-      client.print("&sensor.last_read=");
-      client.print(sensor_last_read/1000);
-      client.print(" HTTP/1.1");
-      client.print("\r\n\r\n");
-      
-      Serial.println("Data sent");
-      
-      delay(100);
-      
-      client.stop();
-    } else {
-      Serial.println("Failed to send data: disconnected");
-    }
-        
     data_last_sent = current_time;
   }
 }
@@ -161,5 +145,5 @@ void send_data() {
 void loop() {
   read_data();
   send_data();
-//  serve_http();
+  serve_http();
 }

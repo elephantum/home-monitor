@@ -4,49 +4,58 @@
 #include <EthernetUdp2.h>
 #include <SPI.h>
 
+////// Конфигурация
 
 // SHT1x Humidity/Temp sensor setup
 #define SENSOR_DATA_PIN  4
 #define SENSOR_CLOCK_PIN 5
-SHT1x sht1x(SENSOR_DATA_PIN, SENSOR_CLOCK_PIN);
-
 
 // Ethernet
-byte mac[] = {
+byte MY_MAC[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
-// assign an IP address for the controller:
-// TODO:0 переехать на DHCP
 // TODO:20 переехать на wifi-соединение
-IPAddress ip(192, 168, 1, 50);
-IPAddress gateway(192, 168, 1, 1);
-IPAddress subnet(255, 255, 255, 0);
+IPAddress MY_IP(192, 168, 1, 50);
+IPAddress MY_GATEWAY(192, 168, 1, 1);
+IPAddress MY_SUBNET(255, 255, 255, 0);
+#define MY_UDP_PORT 8888
+#define MY_HTTP_PORT 80
 
-IPAddress MONITOR_SERVER(52,30,205,62);
-//"mon.elephantum.io"
-#define MONITOR_PORT 8003
-
-EthernetServer server(80);
-EthernetUDP udp;
+IPAddress STATSD_SERVER_IP(52,30,205,62);
+#define STATSD_SERVER_PORT 8125
+#define DATA_SEND_INTERVAL 10000
 
 // read data every second
 #define SENSOR_READ_INTERVAL 1000
+
+//////
+
+SHT1x sht1x(SENSOR_DATA_PIN, SENSOR_CLOCK_PIN);
+
+EthernetServer server(MY_HTTP_PORT);
+EthernetUDP udp;
 
 float temp_c;
 float humidity;
 unsigned long sensor_last_read;
 
-#define DATA_SEND_INTERVAL 10000
 unsigned long data_last_sent;
 
 void setup() {
-  // start the Ethernet connection and the server:
-  Ethernet.begin(mac, ip);
-  udp.begin(8888);
-  server.begin();
-
   Serial.begin(9600); // Open serial connection to report values to host
   Serial.println("Starting up");
+
+  // start the Ethernet connection and the server:
+  Serial.println("Starting Ethernet with DHCP");
+  if (Ethernet.begin(MY_MAC) == 0) {
+    Serial.println("Failed to configure Ethernet using DHCP, using hardcoded IP");
+    Ethernet.begin(MY_MAC, MY_IP);
+  }
+  Serial.print("My IP: ");
+  Serial.println(Ethernet.localIP());
+  
+  udp.begin(MY_UDP_PORT);
+  server.begin();
 
   // give the sensor and Ethernet shield time to set up:
   delay(1000);
@@ -125,8 +134,7 @@ void send_metric(char *name, float val) {
   sprintf(msg, "%s:%s|g", name, val_str);
 
   Serial.println(msg);
-  // TODO:10 вынести порт в определения
-  udp.beginPacket(MONITOR_SERVER, 8125);
+  udp.beginPacket(STATSD_SERVER_IP, STATSD_SERVER_PORT);
   udp.write(msg);
   udp.endPacket();
 }

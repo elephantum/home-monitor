@@ -4,7 +4,7 @@
 #include <EthernetUdp2.h>
 #include <SPI.h>
 
- 
+
 // SHT1x Humidity/Temp sensor setup
 #define SENSOR_DATA_PIN  4
 #define SENSOR_CLOCK_PIN 5
@@ -16,6 +16,8 @@ byte mac[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
 // assign an IP address for the controller:
+// TODO:0 переехать на DHCP
+// TODO:20 переехать на wifi-соединение
 IPAddress ip(192, 168, 1, 50);
 IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
@@ -48,7 +50,7 @@ void setup() {
 
   // give the sensor and Ethernet shield time to set up:
   delay(1000);
-  
+
   temp_c = 0;
   humidity = 0;
   sensor_last_read = 0;
@@ -91,7 +93,7 @@ void serve_http() {
           client.print("Humidity: ");
           client.print(humidity);
           client.print("<br>");
-          
+
           client.print("Last update time: ");
           client.print(sensor_last_read);
           client.print("<br>");
@@ -118,11 +120,12 @@ void serve_http() {
 void send_metric(char *name, float val) {
   char msg[255];
   char val_str[100];
-  
+
   dtostrf(val, 0, 4, val_str);
   sprintf(msg, "%s:%s|g", name, val_str);
-  
+
   Serial.println(msg);
+  // TODO:10 вынести порт в определения
   udp.beginPacket(MONITOR_SERVER, 8125);
   udp.write(msg);
   udp.endPacket();
@@ -130,10 +133,10 @@ void send_metric(char *name, float val) {
 
 void send_data() {
   unsigned long current_time = millis();
-  
+
   if(data_last_sent + DATA_SEND_INTERVAL < current_time) {
     Serial.println("Sending data to statsd");
-    
+
     send_metric("sensor.temperature", temp_c);
     send_metric("sensor.humidity", humidity);
     send_metric("sensor.uptime", millis()/1000);

@@ -1,5 +1,6 @@
 #include <SHT1x.h>
 
+// TODO:20 переехать на wifi-соединение
 #include <Ethernet2.h>
 #include <EthernetUdp2.h>
 #include <SPI.h>
@@ -14,7 +15,6 @@
 byte MY_MAC[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
-// TODO:20 переехать на wifi-соединение
 IPAddress MY_IP(192, 168, 1, 50);
 IPAddress MY_GATEWAY(192, 168, 1, 1);
 IPAddress MY_SUBNET(255, 255, 255, 0);
@@ -53,7 +53,7 @@ void setup() {
   }
   Serial.print("My IP: ");
   Serial.println(Ethernet.localIP());
-  
+
   udp.begin(MY_UDP_PORT);
   server.begin();
 

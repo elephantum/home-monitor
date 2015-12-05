@@ -5,6 +5,7 @@ graphite:
     - "2003:2003/udp"
     - "8080:80"
     - "8125:8125"
+    - "8125:8125/udp"
     - "8126:8126"
   volumes:
     - /mon-data/graphite-data:/opt/graphite/storage/whisper
@@ -18,7 +19,7 @@ grafana:
   volumes:
     - /mon-data/grafana-data:/var/lib/grafana
   environment:
-    - GF_USERS_ALLOW_SIGN_UP:false
-    - GF_AUTH_ANONYMOUS_ENABLED:false
-    - GF_AUTH_ANONYMOUS_ORG_ROLE:Viewer
-    - GF_SERVER_ROOT_URL:http://mon.elephantum.io/
+    - GF_USERS_ALLOW_SIGN_UP=false
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    - GF_SERVER_ROOT_URL=http://mon.elephantum.io/

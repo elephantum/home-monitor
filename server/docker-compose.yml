@@ -7,7 +7,7 @@ graphite:
     - "8125:8125"
     - "8126:8126"
   volumes:
-    - /graphite-data:/opt/graphite/storage/whisper
+    - /mon-data/graphite-data:/opt/graphite/storage/whisper
 
 grafana:
   image: grafana/grafana
@@ -16,7 +16,7 @@ grafana:
   ports:
     - "80:3000"
   volumes:
-    - /grafana-data:/var/lib/grafana
+    - /mon-data/grafana-data:/var/lib/grafana
   environment:
     - GF_USERS_ALLOW_SIGN_UP:false
     - GF_AUTH_ANONYMOUS_ENABLED:false

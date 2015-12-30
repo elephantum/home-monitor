@@ -1,9 +1,9 @@
 #include <SHT1x.h>
 
 // TODO:20 переехать на wifi-соединение
+#include <SPI.h>
 #include <Ethernet2.h>
 #include <EthernetUdp2.h>
-#include <SPI.h>
 
 ////// Конфигурация
 
@@ -43,7 +43,7 @@ unsigned long data_last_sent;
 
 void setup() {
   Serial.begin(9600); // Open serial connection to report values to host
-  Serial.println("Starting up");
+  Serial.println("Hi!");
 
   // start the Ethernet connection and the server:
   Serial.println("Starting Ethernet with DHCP");
